@@ -5,15 +5,19 @@
     using System.Linq;
     using System.Threading.Tasks;
     using Entities;
+    using Microsoft.AspNetCore.Identity;
+    using Shop.Web.Helpers;
 
     public class SeedDb
     {
         private readonly DataContext context;
+        private readonly IUserHelper userHelper;
         private Random random;
 
-        public SeedDb(DataContext context)
+        public SeedDb(DataContext context, IUserHelper userHelper)
         {
             this.context = context;
+            this.userHelper = userHelper;
             this.random = new Random();
         }
 
@@ -21,23 +25,44 @@
         {
             await this.context.Database.EnsureCreatedAsync();
 
+            var user = await this.userHelper.GetUserByEmailAsync("erick029714@gmail.com");
+            if (user == null)
+            {
+                user = new User
+                {
+                    FirstName = "Erick",
+                    LastName = "López",
+                    Email = "erick029714@gmail.com",
+                    UserName = "erick029714@gmail.com",
+                    PhoneNumber = "35503765"
+                };
+
+                var result = await this.userHelper.AddUserAsync(user, "123456");
+
+                if (result != IdentityResult.Success)
+                {
+                    throw new InvalidOperationException("Could not create the user in seeder");
+                }
+            }
+
             if (!this.context.Products.Any())
             {
-                this.AddProduct("iPhone X");
-                this.AddProduct("Samsung S9");
-                this.AddProduct("Huawei P20");
+                this.AddProduct("iPhone X", user);
+                this.AddProduct("Samsung S9", user);
+                this.AddProduct("Huawei P20", user);
                 await this.context.SaveChangesAsync();
             }
         }
 
-        private void AddProduct(string name)
+        private void AddProduct(string name, User user)
         {
             this.context.Products.Add(new Product
             {
                 Name = name,
                 Price = this.random.Next(1000),
                 IsAvailabe = true,
-                Stock = this.random.Next(100)
+                Stock = this.random.Next(100),
+                User = user
             });
         }
     }
